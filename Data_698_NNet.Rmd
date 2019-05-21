@@ -1,0 +1,118 @@
+---
+title: "Data_698_NNet"
+author: "Dan Wigodsky"
+date: "May 7, 2019"
+output: html_document
+---  
+  
+This file accompanies Data_698_xgBoost_tuning.  
+```{r load-packages}
+suppressWarnings(suppressMessages(library(glmnet)))
+suppressWarnings(suppressMessages(library(showtext)))
+suppressWarnings(suppressMessages(library(ggplot2)))
+suppressWarnings(suppressMessages(library(kableExtra)))
+suppressWarnings(suppressMessages(library(expsmooth)))
+suppressWarnings(suppressMessages(library(seasonal)))
+suppressWarnings(suppressMessages(library(gridExtra)))
+suppressWarnings(suppressMessages(library(stringr)))
+suppressWarnings(suppressMessages(library(dplyr)))
+suppressWarnings(suppressMessages(library(ggforce)))
+suppressWarnings(suppressMessages(library(car)))
+suppressWarnings(suppressMessages(library(caret)))
+suppressWarnings(suppressMessages(library(nnet)))
+suppressWarnings(suppressMessages(library(earth)))
+
+suppressWarnings(suppressMessages(library(rms)))
+font_add_google(name = "Corben", family = "corben", regular.wt = 400, bold.wt = 700)
+  font_add_google(name = "Bree Serif", family = "breeserif", regular.wt = 400, bold.wt = 700)
+showtext_auto()
+set.seed(563)
+```  
+   
+```{r nn-load,fig.showtext = TRUE,fig.height=18,fig.width=14,warning=FALSE,eval=TRUE}
+training_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/train_validation_splits/training_set.csv')
+validation_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/train_validation_splits/validation_set.csv')
+testing_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/train_validation_splits/testing_set.csv')
+
+trainingDatax<-training_set[,-1]
+trainingDatay<-training_set[,1]
+validationDatax<-validation_set[,-1]
+validationDatay<-validation_set[,1]
+testingDatax<-testing_set[,-1]
+testingDatay<-testing_set[,1]
+```  
+  
+```{r nn-train,fig.showtext = TRUE,fig.height=18,fig.width=14,warning=FALSE,eval=FALSE}
+
+for (s in 22:22){
+  for (d in seq(.1, .1, by=.1)){    
+    for (m in seq(9000,9000,by = 2000)){
+      for (n in seq(10,10, by=5)){   
+
+nnetfit<- nnet(x = trainingDatax,y=trainingDatay, size=s, decay = d, linout = TRUE, trace = FALSE, preproc = c("center","scale"), maxit = m, MaxNwts=n) 
+#plotmo(nnetfit,pmethod="partdep",cex.main=2) 
+nnetPred<-predict(nnetfit,newdata=validationDatax)
+#postResample(pred=nnetPred,obs=validationDatay)
+
+
+
+size<-s
+decay<-d
+maxit<-m
+MaxNwts<-n
+
+r_m_s_e<-RMSE(nnetPred,validation_set[,1])
+nnet_tune_list<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/notes/nnet_tuning.csv')
+nnet_tuning_data<-as.data.frame(cbind(size,decay,maxit,MaxNwts,r_m_s_e))
+nnet_tuning_data<-rbind(nnet_tune_list,nnet_tuning_data)
+write.csv(nnet_tuning_data,row.names = FALSE, 'C:/Users/dawig/Desktop/Data698/Maryland/notes/nnet_tuning.csv')#append=true
+}}}}
+
+
+```  
+  
+```{r nn-ave-train,fig.showtext = TRUE,fig.height=18,fig.width=14,warning=FALSE,echo=FALSE,eval=FALSE}
+#Write commands are commented out for files already written to
+
+
+
+for (s in seq(22,22,by=2)){
+  for (d in seq(.1, .1, by=.1)){    
+    for (m in seq(9000,9000,by = 2000)){
+      for (n in seq(10,10, by=5)){   
+
+nnetfit<- avNNet(x = trainingDatax,y=trainingDatay, size=s, repeats=10,decay = d, linout = TRUE, trace = FALSE, preproc = c("center","scale"), maxit = m, MaxNwts=n) 
+#plotmo(nnetfit,pmethod="partdep",cex.main=2) 
+nnetPred<-predict(nnetfit,newdata=validationDatax)
+#postResample(pred=nnetPred,obs=validationDatay)
+
+#write.csv(nnetPred,'C:/Users/dawig/Desktop/Data698/Maryland/notes/nnet_ave_validation_predictions.csv',row.names=FALSE)
+nnetPred_test<-predict(nnetfit,newdata=testingDatax)
+#write.csv(nnetPred_test,'C:/Users/dawig/Desktop/Data698/Maryland/notes/nnet_ave_testing_predictions.csv',row.names=FALSE)
+
+size<-s
+decay<-d
+maxit<-m
+MaxNwts<-n
+
+r_m_s_e<-RMSE(nnetPred,validation_set[,1])
+nnet_tune_list<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/notes/nnet_ave_tuning.csv')
+nnet_tuning_data<-as.data.frame(cbind(size,decay,maxit,MaxNwts,r_m_s_e))
+nnet_tuning_data<-rbind(nnet_tune_list,nnet_tuning_data)
+#write.csv(nnet_tuning_data,row.names = FALSE, 'C:/Users/dawig/Desktop/Data698/Maryland/notes/nnet_ave_tuning.csv')#append=true
+}}}}
+```  
+  
+```{r nn-visualize,fig.showtext = TRUE,fig.height=18,fig.width=14,warning=FALSE,echo=FALSE,eval=TRUE}
+
+nnetfit<- nnet(x = trainingDatax,y=trainingDatay, size=22, decay = .1, linout = TRUE, trace = FALSE, preproc = c("center","scale"), maxit = 9000, MaxNwts=10) 
+plotmo(nnetfit,pmethod="partdep",cex.main=2) 
+nnetPred<-predict(nnetfit,newdata=validationDatax)
+postResample(pred=nnetPred,obs=validationDatay)
+
+```
+
+
+
+
+

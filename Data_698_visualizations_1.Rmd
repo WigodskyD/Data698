@@ -1,0 +1,146 @@
+---
+title: "Data_698_visualizations_1"
+author: "Dan Wigodsky"
+date: "February 21, 2019"
+output: html_document
+---
+
+```{r load-packages}
+suppressWarnings(suppressMessages(library(fpp2)))
+suppressWarnings(suppressMessages(library(showtext)))
+suppressWarnings(suppressMessages(library(ggplot2)))
+suppressWarnings(suppressMessages(library(kableExtra)))
+suppressWarnings(suppressMessages(library(expsmooth)))
+suppressWarnings(suppressMessages(library(seasonal)))
+suppressWarnings(suppressMessages(library(gridExtra)))
+suppressWarnings(suppressMessages(library(stringr)))
+suppressWarnings(suppressMessages(library(dplyr)))
+suppressWarnings(suppressMessages(library(ggforce)))
+font_add_google(name = "Corben", family = "corben", regular.wt = 400, bold.wt = 700)
+  font_add_google(name = "Bree Serif", family = "breeserif", regular.wt = 400, bold.wt = 700)
+showtext_auto()
+```   
+  
+```{r datavistemp2,fig.showtext = TRUE,echo=FALSE,fig.height=10,fig.width=10,warning=FALSE,eval=FALSE}
+edges=read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/county_edges_first_last_match.csv',header=FALSE)
+colnames(edges)<-c('bool','latitude','longitude')
+#edges are in order with opposite points next to ech other.  We need to unzip them so they're in order
+seq(1,length(edges[,1]),2)
+edges_top<-edges[seq(1,length(edges[,1]),2),]
+edges_top<-edges_top[which(edges_top$latitude>39.1),]
+edges_bottom<-edges[seq(2,length(edges[,1]),2),]
+edges_bottom<-edges_bottom[which(edges_bottom$latitude<39.2),]
+edges<-rbind(edges_top,edges_bottom)
+edges_graph_path<-rbind(edges,edges[1,])
+ggplot(data=edges_graph_path) +geom_path(aes(x=-longitude,y=latitude,color=bool))+
+  theme(text = element_text(family="corben",color='#249382',size=22))+ geom_circle(aes(x0=-77.21, y0=39.15, r=.32))+ geom_point(aes(x=-77.21, y=39.15),color='blue')
+```  
+  
+```{r datavistemp,fig.showtext = TRUE,echo=FALSE,fig.height=10,fig.width=10,warning=FALSE,eval=FALSE}
+edges=read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/county_edges_stage_2.csv')
+plot(edges)
+edges<-edges[edges$bool==1,]
+for (i in 1:length(edges$latitude)){
+  edges$latitude<-edges$latitude*4
+  edges$longitude<-edges$longitude*4
+  edges$latitude<-round(edges$latitude,2)
+  edges$longitude<-round(edges$longitude,2)
+  edges$latitude<-edges$latitude/4
+  edges$longitude<-edges$longitude/4
+  
+  
+}
+#create points on a circle
+x_val_set<-rep(0,36)
+y_val_set<-rep(0,36)
+for (i in c(1:36)){
+x_val_set[i]<-(-77.21+.32*(cos(10*i*pi/180)))
+y_val_set[i]<-(39.15+.32*(sin(10*i*pi/180)))
+}
+x_val_set
+y_val_set
+#transfer points to same rounding as edge data
+x_val_set<-x_val_set*4
+y_val_set<-y_val_set*4
+x_val_set<-round(x_val_set,2)
+y_val_set<-round(y_val_set,2)
+x_val_set<-x_val_set/4
+y_val_set<-y_val_set/4
+
+x_y_data<-cbind.data.frame(x_val_set,y_val_set)
+  
+ggplot(data=edges) +geom_point(aes(x=-longitude,y=latitude,color=bool))+
+  theme(text = element_text(family="corben",color='#249382',size=22))+ geom_circle(aes(x0=-77.21, y0=39.15, r=.32))+geom_segment(aes(x = -77.3, xend = -77.12, y = 39.45708, yend = 38.84292))+geom_point(data=x_y_data,x=x_val_set,y=y_val_set,color='green')+geom_segment(aes(x = x_val_set[3], xend = x_val_set[21], y = y_val_set[3], yend = y_val_set[21]))+geom_segment(aes(x = x_val_set[15], xend = x_val_set[33], y = y_val_set[15], yend = y_val_set[33]))#+ geom_line(data=line_matrix,x=xvals,y=yvals) #+xlim(-77.21,-76.9)+ylim(39.07,39.35) #+geom_point(y=39.138,x=-76.94,color='red')
+
+#+ geom_circle(aes(x0=-77.21, y0=39.15, r=.32))
+# 
+
+# Behold the some circles
+#ggplot() + geom_circle(aes(x0=77.2, y0=39.15, r=1))
+```
+
+
+
+
+```{r datavis1,fig.showtext = TRUE,echo=FALSE,fig.heigth=4,fig.width=8,warning=FALSE,eval=TRUE}
+#6-lat,7-long
+violations_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/notes/violations_files.csv',header=FALSE)
+violations_set<-violations_set[1:2,]
+
+inputter<-as.character(violations_set[1])
+plotcaller<-function(set){
+data_in<-set
+data_to_ggplot<-paste0("C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/",data_in)
+viol_set<-read.csv(data_to_ggplot)
+viol_set<-viol_set[,c(7,8)]
+colnames(viol_set)<-c('latitude','longitude')
+plotter(viol_set, 'longitude', 'latitude')
+}
+
+viol_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/school_bus_violations.csv')
+viol_set<-viol_set[,c(7,8)]
+colnames(viol_set)<-c('latitude','longitude')
+plotter3<-function(df,col1,col2){
+ggplot(df,aes_string(x=col2,y=col1,alpha=.25,color='#249382'))+geom_point()+ theme(axis.text.x = element_text(angle = 30, hjust = .9),text = element_text(family = "corben",color='#249382',size=30),panel.background = element_rect(fill = '#f2f7f2'))
+}
+smalldf<-c(1,2,3)
+smalldf2<-c(4,5,6)
+smalldf<-as.data.frame(cbind(smalldf,smalldf2))
+colnames(smalldf)<-c('firstcol','secondcol')
+
+plotter <- function(df, x.axis, y.axis, point.colour = NULL) {ggplot(df, aes_string(x = x.axis, y = y.axis)) + 
+             geom_point(alpha=.25,color='#249382')+xlim(-77.8,-76.8)+ylim(38.9,39.4)
+}
+
+plotcaller2<-function(a_list,set){
+data_in<-set
+data_to_ggplot<-paste0("C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/",data_in)
+viol_set<-read.csv(data_to_ggplot)
+viol_set<-viol_set[,c(7,8)]
+colnames(viol_set)<-c('latitude','longitude')
+head(viol_set)
+str(viol_set)
+plotter(viol_set, 'longitude', 'latitude')
+}
+#sapply(violations_set,plotcaller2)
+plotter(viol_set, 'longitude', 'latitude')
+```
+data_in<-violations_set[1]
+data_to_ggplot<-paste0("C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/",data_in)
+print(data_to_ggplot)
+viol_set<-read.csv(data_to_ggplot)
+viol_set<-viol_set[,c(7,8)]
+ggplot()+geom_point(aes(x=viol_set[,2],y=viol_set[,1]),alpha=.25,color='#249382')+ theme(axis.text.x = element_text(angle = 30, hjust = .9),text = element_text(family = "corben",color='#249382',size=30),panel.background = element_rect(fill = '#f2f7f2'))+xlim(-77.8,-76.8)+ylim(38.9,39.4)
+
+
+speeding_viol<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/speeding_violations.csv')
+
+
+speeding_viol<-speeding_viol[,c(7,8)]
+
+ggplot()+geom_point(aes(x=speeding_viol[,2],y=speeding_viol[,1]),alpha=.25,color='#249382')+ theme(axis.text.x = element_text(angle = 30, hjust = .9),text = element_text(family = "corben",color='#249382',size=30),panel.background = element_rect(fill = '#f2f7f2'))+xlim(-77.8,-76.8)+ylim(38.9,39.4)
+
+
+
+
++ theme(axis.text.x = element_text(angle = 30, hjust = .9),text = element_text(family = "breeserif",color='#249382',size=30),legend.position = c(0.8, 0.3),legend.background=element_blank(),legend.title = element_text(color='#f2f7f2'),panel.background = element_rect(fill = '#f2f7f2'))+labs(y='',x='Q1 2018')

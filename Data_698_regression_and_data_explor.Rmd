@@ -1,0 +1,320 @@
+---
+title: "Data_698_regression_and_data_explor"
+author: "Dan Wigodsky"
+date: "April 29, 2019"
+output: html_document
+---
+
+```{r load-packages}
+suppressWarnings(suppressMessages(library(glmnet)))
+suppressWarnings(suppressMessages(library(plotmo)))
+suppressWarnings(suppressMessages(library(showtext)))
+suppressWarnings(suppressMessages(library(ggplot2)))
+suppressWarnings(suppressMessages(library(kableExtra)))
+suppressWarnings(suppressMessages(library(expsmooth)))
+suppressWarnings(suppressMessages(library(seasonal)))
+suppressWarnings(suppressMessages(library(gridExtra)))
+suppressWarnings(suppressMessages(library(nnet)))
+suppressWarnings(suppressMessages(library(dplyr)))
+suppressWarnings(suppressMessages(library(ggforce)))
+suppressWarnings(suppressMessages(library(car)))
+suppressWarnings(suppressMessages(library(caret)))
+suppressWarnings(suppressMessages(library(rms)))
+suppressWarnings(suppressMessages(library(xgboost)))
+font_add_google(name = "Corben", family = "corben", regular.wt = 400, bold.wt = 700)
+  font_add_google(name = "Bree Serif", family = "breeserif", regular.wt = 400, bold.wt = 700)
+showtext_auto()
+set.seed(563)
+``` 
+
+
+```{r regr-models-one,fig.showtext = TRUE,echo=FALSE,fig.height=5,fig.width=5,warning=FALSE,eval=TRUE}
+accident_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/accidents_kernel_temp.csv')
+speeding_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/speeding_kernel.csv')
+registration_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/registration_violations_kernel.csv')
+traffic_light_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/traffic_sign_light_kernel.csv')
+aggressive_driving_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/aggressive_driving_kernel.csv')
+alcohol_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/alcohol_kernel.csv')
+cellphone_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/cellphone_kernel.csv')
+driver_to_ped_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/driver_care_for_pedestrians_kernel.csv')
+emergency_vehicle_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/emergency_vehicle_kernel.csv')
+equipment_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/equipment_kernel.csv')
+follow_closely_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/following_closely_kernel.csv')
+lane_use_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/lane_use_kernel.csv')
+misc_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/miscellaneous_kernel.csv')
+parking_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/parking_kernel.csv')
+pedestrian_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/pedestrian_kernel.csv')
+right_of_way_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/right_of_way_kernel.csv')
+right_side_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/right_side_violations_kernel.csv')
+scene_of_accident_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/scene_of_accident_kernel.csv')
+school_bus_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/school_bus_kernel.csv')
+seatbelt_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/seatbelt_kernel.csv')
+slow_driving_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/slow_driving_kernel.csv')
+stopping_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/stopping_violations_kernel.csv')
+turning_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/turning_kernel.csv')
+wrong_way_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/kernels/wrong_way_kernel.csv')
+
+accident_exploration_set<-accident_set
+```  
+  
+```{r training_validation_set_creation,fig.showtext = TRUE,echo=FALSE,fig.height=5,fig.width=5,warning=FALSE,eval=TRUE}
+
+regression_ready_set<-cbind.data.frame(accident_set[,4],speeding_set[,4],registration_set[,4],traffic_light_set[,4],aggressive_driving_set[,4],alcohol_set[,4],cellphone_set[,4],driver_to_ped_set[,4],emergency_vehicle_set[,4],equipment_set[,4],follow_closely_set[,4],lane_use_set[,4],misc_set[,4],parking_set[,4],pedestrian_set[,4],right_of_way_set[,4],right_side_set[,4],scene_of_accident_set[,4],school_bus_set[,4],seatbelt_set[,4],slow_driving_set[,4],stopping_set[,4],turning_set[,4],wrong_way_set[,4])
+
+colnames(regression_ready_set)<-c('accident','speeding','registration','traffic_light','aggressive_driving','alcohol','cellphone_and_distracted','driver_care_for_ped','emergency_vehicle','equipment','following_closely','lane_use','miscellaneous','parking','pedestrian','right_of_way','right_side','scene_of_accident','school_bus','seatbelt','slow_driving','stopping','turning','wrong_way')
+#regression_ready_set
+#create a testing set for final evaluation
+testing_set_indices<-sample.int(length(regression_ready_set$accident),size=.2*length(regression_ready_set$accident))
+testing_set<-regression_ready_set[testing_set_indices,]  
+training_set<-regression_ready_set[-testing_set_indices,] 
+#create a validation set for evaluation along the way
+validation_set_indices<-sample.int(length(training_set$accident),size=.2*length(training_set$accident)) 
+validation_set<-training_set[validation_set_indices,]  
+training_set<-training_set[-validation_set_indices,]  
+#write.csv(training_set,'C:/Users/dawig/Desktop/Data698/Maryland/train_validation_splits/training_set.csv',row.names = FALSE)
+#write.csv(validation_set,'C:/Users/dawig/Desktop/Data698/Maryland/train_validation_splits/validation_set.csv',row.names = FALSE)
+#write.csv(testing_set,'C:/Users/dawig/Desktop/Data698/Maryland/train_validation_splits/testing_set.csv',row.names = FALSE)
+
+```  
+  
+```{r first-models,fig.showtext = TRUE,echo=FALSE,fig.height=5,fig.width=5,warning=FALSE,eval=TRUE}
+basic_linear_model<-lm(accident~.,data=training_set)
+summary(basic_linear_model)
+vif(basic_linear_model)
+ggplot()+geom_point(aes(x=seq_along(resid(basic_linear_model)),y=resid(basic_linear_model)),color='#576da8')+labs(x='Residuals',y='')+ theme(panel.background = element_rect(fill = '#f4f4ef'),panel.grid.major = element_blank(), panel.grid.minor = element_blank(),text = element_text(family = 'corben',color='#249382',size=22))
+
+speeding_one_var_model<-lm(accident~speeding,data=training_set)
+summary(speeding_one_var_model)
+registration_one_var_model<-lm(accident~registration,data=training_set)
+summary(registration_one_var_model)
+parking_one_var_model<-lm(accident~parking,data=training_set)
+summary(parking_one_var_model)
+seatbelt_one_var_model<-lm(accident~seatbelt,data=training_set)
+summary(seatbelt_one_var_model)
+
+
+#The following line runs the code to perform forward stepwise regression
+#step(registration_one_var_model,scope=list(lower=registration_one_var_model,upper=basic_linear_model) ,direction="forward")
+forward_selection_model<-lm(accident ~ registration + scene_of_accident + following_closely + right_side + cellphone_and_distracted + lane_use + speeding + miscellaneous + alcohol + aggressive_driving + wrong_way + parking + traffic_light + pedestrian + emergency_vehicle + turning + equipment + right_of_way + driver_care_for_ped + school_bus + slow_driving,data=training_set)
+summary(forward_selection_model)
+vif(forward_selection_model)
+ggplot()+geom_point(aes(x=seq_along(resid(forward_selection_model)),y=resid(forward_selection_model)),color='#576da8')+labs(x='Residuals',y='Forward Selection Model')+ theme(panel.background = element_rect(fill = '#f4f4ef'),panel.grid.major = element_blank(), panel.grid.minor = element_blank(),text = element_text(family = 'corben',color='#249382',size=22))
+```  
+  
+#####The residuals show a pattern of decreasing magnitude with a sharp drop off.  We attempt a gls model to try to combat this.  The gls didn't help much.  This appears to be caused by the population of the county, which is much higher in the east than in the west.  The eastern half has small cities.  Gaithersburg, at the highest, has 59,933 people.  In the west, the Maryland agricultural reserve contains 93000 acres, over 63000 of which is farmland.  
+  
+```{r regr-models-two,fig.showtext = TRUE,echo=FALSE,fig.height=5,fig.width=5,warning=FALSE,eval=TRUE}
+gen_least_squares_model<-Gls(accident ~ registration + scene_of_accident + following_closely + right_side + cellphone_and_distracted + lane_use + speeding + miscellaneous + alcohol + aggressive_driving + wrong_way + parking + traffic_light + pedestrian + emergency_vehicle + turning + equipment + right_of_way + driver_care_for_ped + school_bus + slow_driving,data=training_set)
+#summary(gen_least_squares_model)
+print('RMSE for gls model')
+RMSE(predict(gen_least_squares_model,validation_set),validation_set[,1])
+postResample(pred=predict(gen_least_squares_model,validation_set),obs=validation_set[,1])
+print('residual correlation for gls')
+residual_set<-resid(gen_least_squares_model)
+n = length(residual_set)
+gls_residuals<-lm(residual_set[-n]~residual_set[-1])
+summary(gls_residuals)
+ggplot()+geom_point(aes(x=seq_along(resid(gen_least_squares_model)),y=resid(gen_least_squares_model)),color='#576da8')+labs(x='Residuals',y='Generalized Least Squares Model')+ theme(panel.background = element_rect(fill = '#f4f4ef'),panel.grid.major = element_blank(), panel.grid.minor = element_blank(),text = element_text(family = 'corben',color='#249382',size=22))
+```  
+We try a regression spline.  (This is not preserved in final paper.)
+```{r regr-models-three,fig.showtext = TRUE,echo=FALSE,fig.height=7,fig.width=7,warning=FALSE,eval=TRUE}
+ggplot(data=training_set)+geom_point(aes(x=seq_along(accident),y=accident),data=training_set)
+ggplot(data=training_set)+geom_point(aes(x=seq_along(speeding),y=speeding),data=training_set)
+ggplot(data=training_set)+geom_point(aes(x=seq_along(alcohol),y=alcohol),data=training_set)
+
+library(splines)
+knots <- quantile(training_set$registration, p = c(0.25, 0.5, 0.75))
+spline_model <- lm (accident ~ bs(registration, knots = knots), data = training_set)
+summary(spline_model)
+print('performance for spline based model')
+postResample(pred=predict(spline_model,validation_set[,-1]),obs=validation_set[,1])
+
+correl.matrix<-cor(training_set, use= "complete.obs") 
+corrplot::corrplot(correl.matrix,method= "color" , type= "upper",tl.cex=2,cl.cex=1.3)
+
+```  
+
+#####To look at some of the geography, we set apart datasets with the highest and very low raw kernel values
+  
+```{r accident-explore,fig.showtext = TRUE,eval=FALSE,fig.height=7,fig.width=7,warning=FALSE,echo=TRUE}
+head(accident_exploration_set) 
+accident_exploration_set %>% 
+  filter(kernel_raw>400)->high_accident_areas
+#write.csv(high_accident_areas,'C:/Users/dawig/Desktop/Data698/Maryland/notes/accident_more_info/high_accident_areas.csv') --done
+accident_exploration_set %>% 
+  filter(kernel_raw<1) %>% 
+  filter(kernel_raw>.4)->low_accident_areas
+#write.csv(low_accident_areas,'C:/Users/dawig/Desktop/Data698/Maryland/notes/accident_more_info/low_accident_areas.csv')
+```
+
+```{r kernel-data-reshaping,fig.showtext = TRUE,echo=FALSE,fig.height=7,fig.width=7,warning=FALSE}
+plot(training_set$speeding)
+hist(training_set$speeding)
+training_set_transformed<-training_set
+validation_set_transformed<-validation_set 
+for (i in 1:23){
+training_set_transformed[,i]<-training_set_transformed[,i]/sum(training_set_transformed[,i])
+validation_set_transformed[,i]<-validation_set_transformed[,i]/sum(validation_set_transformed[,i])
+}
+
+plot(training_set_transformed$speeding)
+hist(training_set_transformed$speeding)
+for (i in 3:23){
+training_set_transformed[,i]<-training_set_transformed[,1]-training_set_transformed[,i]
+validation_set_transformed[,i]<-validation_set_transformed[,1]-validation_set_transformed[,i]
+}
+#Bring back original target variable columns for train and validation sets
+training_set_transformed[,1]<-training_set[,1]
+validation_set_transformed[,1]<-validation_set[,1]
+
+plot(training_set_transformed$speeding)
+transform_linear_model<-lm(accident~.,data=training_set_transformed)
+summary(transform_linear_model)
+print('vif for transformed linear model')
+vif(transform_linear_model)
+print('RMSE for transformed linear model')
+validation_set_xform_y_vals<-validation_set_transformed[,1]
+RMSE(predict(transform_linear_model,validation_set_transformed),validation_set_xform_y_vals)
+postResample(pred=predict(transform_linear_model,validation_set_transformed),obs=validation_set_xform_y_vals)
+
+validation_vector<-validation_set[,1]
+print('mean for validation set, accident kernel')
+mean(validation_vector)
+print('basic multi regression')
+RMSE(predict(basic_linear_model,validation_set),validation_vector)
+postResample(pred=predict(basic_linear_model,validation_set),obs=validation_vector)
+print('forward selection model')
+postResample(pred=predict(forward_selection_model,validation_set),obs=validation_vector)
+#------------------------
+
+RMSE(predict(lm(accident~registration ,data=training_set),validation_set),validation_vector)
+RMSE(predict(lm(accident~equipment ,data=training_set),validation_set),validation_vector)
+RMSE(predict(lm(accident~right_of_way ,data=training_set),validation_set),validation_vector)
+RMSE(predict(lm(accident~miscellaneous ,data=training_set),validation_set),validation_vector)
+
+```  
+  
+```{r transform-and-choose,fig.showtext = TRUE,echo=FALSE,fig.height=7,fig.width=7,warning=FALSE}
+
+vif(basic_linear_model)[c(2,4,5,6,9,15,16,17,20,22)]
+low_vif_regression<-lm(accident~speeding+traffic_light+driver_care_for_ped+emergency_vehicle+following_closely+lane_use+miscellaneous+parking+pedestrian+school_bus+seatbelt+stopping+wrong_way +right_of_way+right_side+alcohol ,data=training_set)
+print('vif , then rmse and cor for low vif-vars regression')
+as.matrix(vif(low_vif_regression))
+RMSE(predict(low_vif_regression,validation_set),validation_vector)
+postResample(pred=predict(low_vif_regression,validation_set),obs=validation_set[,1])
+
+#-----------
+elastic_net_model<-glmnet(as.matrix(training_set[,-1]), training_set[,1], family="gaussian", alpha=1, standardize = TRUE)
+plot(elastic_net_model)
+elnet_predict<-predict(elastic_net_model, s=elastic_net_model$lambda.1se, newx=as.matrix(validation_set[,-1]))
+print('Correlation and RMSE for elastic net, alpha=1, lasso')
+RMSE(elnet_predict,validation_set[,1])
+temp_validation<-validation_set[,1]
+postResample(pred=predict(elastic_net_model, s=elastic_net_model$lambda.1se, newx=as.matrix(validation_set[,-1])),obs=temp_validation)
+
+#-----------
+ctrl<- trainControl(method= 'CV', number = 10)
+pls_model<-train(accident~.,data=training_set,
+            method='pls',
+            tuneLength=10,
+            trControl=ctrl,
+            preProc = c('center','scale'))
+print('Correlation and RMSE for pls - oscorepls -  method')
+RMSE(predict(pls_model,newdata=validation_set),validation_set[,1])
+postResample(pred=predict(pls_model,newdata=validation_set),obs=validation_set[,1])
+```  
+
+```{r xgboost-tuning,fig.showtext = TRUE,eval=FALSE,fig.height=7,fig.width=7,warning=FALSE}
+
+max_depth<-0
+eta<-0
+n_threads<-0
+n_rounds<-0
+r_m_s_e<-0
+for (d in 4:4){
+  for (e in seq(.163, .163, by=.001)){    #do this by .05
+    for (t in 4:4){
+      for (r in 21:21){   #do this by 100
+r<- r*200
+xgb_model<-xgboost(data = as.matrix(training_set[,-1]), label = as.matrix(training_set[,1]), max.depth = d, eta = e, nthread = t, nrounds = r)
+xgb_predict<-predict(xgb_model,as.matrix(validation_set[,-1]))
+max_depth<-d
+eta<-e
+n_threads<-t
+n_rounds<-r
+r_m_s_e<-RMSE(xgb_predict,validation_set[,1])
+xg_tune_list<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/notes/xgBoost_tuning.csv')
+xg_tuning_data<-as.data.frame(cbind(max_depth,eta,n_threads,n_rounds,r_m_s_e))
+xg_tuning_data<-rbind(xg_tune_list,xg_tuning_data)
+#write.csv(xg_tuning_data,row.names = FALSE, 'C:/Users/dawig/Desktop/Data698/Maryland/notes/xgBoost_tuning.csv')#append=true wouldn't work
+
+      }}}}
+```  
+  
+```{r xgboost-winning-model,fig.showtext = TRUE,eval=TRUE,fig.height=7,fig.width=7,warning=FALSE}
+
+xgb_model<-xgboost(data = as.matrix(training_set[,-1]), label = as.matrix(training_set[,1]), max.depth = 4, eta = .163, nthread = 4, nrounds = 4200, verbose=FALSE)
+xgb_predict<-predict(xgb_model,as.matrix(validation_set[,-1]))
+RMSE(xgb_predict,validation_set[,1])
+postResample(pred=xgb_predict,obs=validation_set[,1])
+importance <- xgb.importance(feature_names = colnames(validation_set), model = xgb_model)
+head(importance)
+xgb.plot.importance(importance_matrix = importance,cex=1.6)
+print('XGBoost performance with testing set')
+xgb_predict_testing<-predict(xgb_model,as.matrix(testing_set[,-1]))
+postResample(pred=xgb_predict_testing,obs=testing_set[,1])
+```  
+  
+```{r basemodel-compare-importance-model,fig.showtext = TRUE,eval=TRUE,fig.height=7,fig.width=7,warning=FALSE}
+
+var_diffa<-lm(accident~speeding+registration+traffic_light+aggressive_driving+alcohol+cellphone_and_distracted+driver_care_for_ped+emergency_vehicle+equipment+following_closely+lane_use+miscellaneous+parking+pedestrian+right_of_way+right_side+scene_of_accident+school_bus+seatbelt+slow_driving+stopping+turning+wrong_way,data=training_set)  
+
+var_diffb<-lm(accident~registration+traffic_light+aggressive_driving+alcohol+cellphone_and_distracted+driver_care_for_ped+emergency_vehicle+equipment+following_closely+lane_use+miscellaneous+parking+pedestrian+right_of_way+right_side+scene_of_accident+school_bus+seatbelt+slow_driving+stopping+turning+wrong_way,data=training_set)  
+  
+var_diffc<-lm(accident~speeding+traffic_light+aggressive_driving+alcohol+cellphone_and_distracted+driver_care_for_ped+emergency_vehicle+equipment+following_closely+lane_use+miscellaneous+parking+pedestrian+right_of_way+right_side+scene_of_accident+school_bus+seatbelt+slow_driving+stopping+turning+wrong_way,data=training_set)  
+
+var_diffd<-lm(accident~speeding+traffic_light+driver_care_for_ped+emergency_vehicle+following_closely+lane_use+miscellaneous+parking+pedestrian+school_bus+seatbelt+stopping+wrong_way +right_of_way+right_side+alcohol ,data=training_set)  
+
+var_diffe<-lm(accident~traffic_light+driver_care_for_ped+emergency_vehicle+following_closely+lane_use+miscellaneous+parking+pedestrian+school_bus+seatbelt+stopping+wrong_way +right_of_way+right_side+alcohol+registration ,data=training_set)  
+
+var_difff<-lm(accident~speeding+traffic_light+driver_care_for_ped+emergency_vehicle+following_closely+lane_use+miscellaneous+parking+pedestrian+school_bus+seatbelt+stopping+wrong_way +right_of_way+right_side+alcohol+registration ,data=training_set)
+
+
+diffa<-summary(var_diffa)[[9]]
+diffb<-summary(var_diffb)[[9]]
+diffc<-summary(var_diffc)[[9]]
+diffd<-summary(var_diffd)[[9]]
+diffe<-summary(var_diffe)[[9]]
+difff<-summary(var_difff)[[9]]
+print('contribution of speeding')
+print(diffa-diffb)
+print('contribution of speeding - low vif')
+print(difff-diffe)
+print('contribution of registration')
+print(diffa-diffc)
+print('contribution of registration - low vif')
+print(difff-diffd)
+
+
+```  
+  
+```{r compare-speeding-registration-plotmo,fig.showtext = TRUE, eval = FALSE, fig.height=7, fig.width=7, warning=FALSE}
+training_set_plotmo<-training_set[,c('accident','speeding','registration')]
+nnetfit<- nnet(x = training_set_plotmo[,2:3],y=training_set_plotmo[,1], size=22, decay = .1, linout = TRUE, trace = FALSE, preproc = c("center","scale"), maxit = 9000, MaxNwts=10) 
+plotmo(nnetfit,pmethod="partdep",cex.main=2,all2=T) 
+
+```  
+  
+```{r one-var-regressions,fig.showtext = TRUE,echo=FALSE,fig.height=5,fig.width=5,warning=FALSE,eval=FALSE}
+for (i in 2:24){
+one_var_linear_model<-lm(training_set[,1]~training_set[,i],data=training_set)
+print(summary(one_var_linear_model)[4][[1]])
+print(summary(one_var_linear_model)[4][[1]][8])
+print(summary(one_var_linear_model)[9])
+}
+one_var_linear_model<-lm(accident~stopping,data=training_set)
+print(summary(one_var_linear_model)[4][[1]])
+print(summary(one_var_linear_model)[4][[1]][8])
+print(summary(one_var_linear_model)[9])
+```
+

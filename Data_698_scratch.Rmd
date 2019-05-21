@@ -1,0 +1,292 @@
+---
+title: "Data_698_scratch"
+author: "Dan Wigodsky"
+date: "February 15, 2019"
+output: html_document
+
+---
+
+
+```{r load-packages}
+suppressWarnings(suppressMessages(library(fpp2)))
+suppressWarnings(suppressMessages(library(showtext)))
+suppressWarnings(suppressMessages(library(ggplot2)))
+suppressWarnings(suppressMessages(library(kableExtra)))
+suppressWarnings(suppressMessages(library(expsmooth)))
+suppressWarnings(suppressMessages(library(seasonal)))
+suppressWarnings(suppressMessages(library(gridExtra)))
+suppressWarnings(suppressMessages(library(stringr)))
+suppressWarnings(suppressMessages(library(dplyr)))
+font_add_google(name = "Corben", family = "corben", regular.wt = 400, bold.wt = 700)
+  font_add_google(name = "Bree Serif", family = "breeserif", regular.wt = 400, bold.wt = 700)
+showtext_auto()
+```  
+
+```{r combine_violation_category,fig.showtext = TRUE,echo=FALSE,fig.width=13,warning=FALSE,eval=FALSE}
+first_dataframe<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/following_closely_violations.csv')
+second_dataframe<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/need_to_add_follow_closely_violations.csv')
+
+
+combined_dataframe<-rbind(first_dataframe,second_dataframe)
+str(first_dataframe)
+str(second_dataframe)
+
+
+write.csv(combined_dataframe,'C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/joined_following_closely_violations.csv',row.names=FALSE)
+```
+
+```{r combine_violation_category_b,fig.showtext = TRUE,echo=FALSE,fig.width=13,warning=FALSE,eval=FALSE}
+first_dataframe<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/equipment_violations.csv')
+second_dataframe<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/need_to_add_equipment_violations.csv')
+third_dataframe<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/need_to_add_equipment_violations_b.csv')
+fourth_dataframe<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/need_to_add_equipment_violations_c.csv')
+fifth_dataframe<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/need_to_add_equipment_violations_d.csv')
+
+combined_dataframe<-rbind(first_dataframe,second_dataframe,third_dataframe,fourth_dataframe,fifth_dataframe)
+str(first_dataframe)
+str(second_dataframe)
+str(third_dataframe)
+str(fourth_dataframe)
+str(fifth_dataframe)
+
+
+write.csv(combined_dataframe,'C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/joined_equipment_violations.csv',row.names=FALSE)
+```
+
+  
+```{r fine_tune_violation_category,fig.showtext = TRUE,echo=FALSE,fig.width=13,warning=FALSE,eval=FALSE}
+#add extra keywords to classify violations
+#add to equipment - EXHAUST|TIRE|WHEEL|BUMPERS|FENDERS|REFLECTORS|SUSPENSION|ADEQUATE|BATTERY|WINDSHIELD|WINDOW|REARVIEW|OIL LEAK|TAIL PIPE|BREAK TUBING|INOPERATIVE|INOP|GLAZING|REFLECTORS|UNSAFE VEH|INDICATOR|HISTORIC PASSENGER VEH|LIGHT|Brake|BRAKE|Tires|lights|Lights|Rearview|Headlights|Signals|Glass|Taillights|Tint|Lamp|Side|Suspension|Fuel|Door|Exhaust|Wheel|Cover|Device|Fenders|Reflectors
+#add to registration - ADDRESS CHANGE|CURRENT TAGS|VALID MEDICAL|PLATE|I.D.|LEARNERS|expired|SUSP|CARD|NO MD LIC
+#add to cell phone set - WIRELESS COMMUNICATION DEVICE|TEXT MSG.|WRITING,SENDING,READING|READING|TEXTING|PHONE
+#create wrong way set - BACKING|WRONG WAY
+#add to aggressive - RECKLESS
+#add to following closely - VEH. TOO C|TOO CLOSE
+#add to parking - STANDING VEH
+#add to seat belts - Belts
+#add new category - right of way - RIGHT OF WAY|RIGHT-OF-WAY
+#add to lane use - MEDIAN STRIP
+#REQ'D SECURITY|PROVISIONAL
+
+remainder_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/remainder_set.csv')
+ 
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'REQ\'D SECURITY|PROVISIONAL')) ->need_to_add_registration_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'REQ\'D SECURITY|PROVISIONAL'))) ->remainder_set
+
+
+write.csv(need_to_add_registration_set,'C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/need_to_add_registration_violations_b_b.csv',row.names=FALSE)
+write.csv(remainder_set,'C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/remainder_set.csv',row.names=FALSE)
+#write.csv(lane_set,'C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/need_to_add_lane_use_violations.csv',row.names=FALSE)
+```  
+  
+```{r break up set_b,fig.showtext = TRUE,echo=FALSE,fig.width=13,warning=FALSE,eval=FALSE}
+remainder_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/remainder_set.csv')
+
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'TEXT MSG')) ->need_to_add_cellphone_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'TEXT MSG'))) ->remainder_set
+
+write.csv(need_to_add_cellphone_set,'C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/need_to_add_cellphone_set.csv',row.names=FALSE)
+
+write.csv(remainder_set,'C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/remainder_set.csv',row.names=FALSE)
+```  
+  
+
+```{r break up set,fig.showtext = TRUE,echo=FALSE,fig.width=13,warning=FALSE,eval=FALSE}
+remainder_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/remainder_set.csv')
+
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'FOLLOWING VEHICLE CLOSER')) ->follow_close_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'FOLLOWING VEHICLE CLOSER'))) ->remainder_set
+#separate out lane change violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'LANE|PASSING')) ->lane_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'LANE|PASSING'))) ->remainder_set
+
+write.csv(follow_close_set,'C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/following_closely_violations.csv',row.names=FALSE)
+write.csv(lane_set,'C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/lane_use_violations.csv',row.names=FALSE)
+write.csv(remainder_set,'C:/Users/dawig/Desktop/Data698/Maryland/by_violation_category/remainder_set.csv',row.names=FALSE)
+```
+
+
+```{r insurance_b,fig.showtext = TRUE,echo=FALSE,fig.width=13,warning=FALSE,eval=FALSE}
+violations<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/Traffic_Violations.csv')
+
+#head(violations)
+#violations[1:100,5]
+#separate  out aggressive drivers
+violations %>% 
+  filter(str_detect(coll(violations[,5]),c('AGGRESSIVE|CARELESS|NEGLIGENT')))->aggressive_set
+violations %>% 
+  filter(!(str_detect(coll(violations[,5]),c('AGGRESSIVE|CARELESS|NEGLIGENT'))))->remainder_set
+#separate school bus/flashing red violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),c('OPERATING ALTERNATELY FLASHING RED LIGHTS')))->school_bus_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),c('OPERATING ALTERNATELY FLASHING RED LIGHTS'))))->remainder_set
+
+#separate failure to change lanes for emerency vehicles
+print('emerg vehicle')
+length(remainder_set[,2])
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),c('EMERG. VEH|TOW TRUCK|STOPPED POLICE CAR')))->emergency_vehicle_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),c('EMERG. VEH|TOW TRUCK|STOPPED POLICE CAR'))))->remainder_set
+
+#separate stop for pedestrian violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'STOP FOR PEDESTRIAN|PEDESTRIAN AT CROSSWALK|AVOID PEDESTRIAN COLLISION|RIGHT-OF-WAY TO PEDESTRIAN'))->driver_to_pedestrian_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'STOP FOR PEDESTRIAN|PEDESTRIAN AT CROSSWALK|AVOID PEDESTRIAN COLLISION|RIGHT-OF-WAY TO PEDESTRIAN')))->remainder_set
+#separate pedestrian violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),c('PEDESTRIAN')))->pedestrian_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),c('PEDESTRIAN'))))->remainder_set
+#separate slow speed violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'SLOW SPEED'))->slow_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'SLOW SPEED')))->remainder_set
+#separate speed violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'MAXIMUM|SPEED'))->speeder_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'MAXIMUM|SPEED')))->remainder_set
+#separate 'stop' violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'STOP'))->stop_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'STOP')))->remainder_set
+#required, lamp, lights, equip - need to be moved back into equipment violation set
+#ACCIDENT - move to scene of accident set
+#RETURN|SCENE|ACCIDENT - moved to return to scene set from main set
+#Both merged
+
+#separate license registration and insurance violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'LICENSE|REGISTRATION|LIC.|REG.|LEARNER\'S PERMIT|REQUIRED SECURITY|INSURED|suspended')) ->registration_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'LICENSE|REGISTRATION|LIC.|REG.|LEARNER\'S PERMIT|REQUIRED SECURITY|INSURED|suspended'))) ->remainder_set
+#separate parking violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'PARKING')) ->parking_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'PARKING'))) ->remainder_set
+#separate turning violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'TURN')) ->turning_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'TURN'))) ->remainder_set
+#separate alcohol related violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'ALCOHOL|IGNITION INTERLOCK|DRUGS')) ->alcohol_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'ALCOHOL|IGNITION INTERLOCK|DRUGS'))) ->remainder_set
+#need to add - CONTROLLED DANGEROUS SUBSTANCE|DWI
+#separate drive on right related violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'RIGHT HALF OF ROADWAY|RIGHT HAND ROADWAY|RIGHT OF CENTER')) ->right_side_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'RIGHT HALF OF ROADWAY|RIGHT HAND ROADWAY|RIGHT OF CENTER'))) ->remainder_set
+#separate cellphone related violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'TELEPHONE|ELECTRONIC MSG.')) ->cellphone_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'TELEPHONE|ELECTRONIC MSG.'))) ->remainder_set
+cellphone_set[,5]
+#separate equipment related violations and lights on violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'LIGHTS|EQUIP|REQUIRED|RED COLOR LIGHT ON REAR LAMPS|MUFFLER|LAMP|TINT|REDUCE LIGHT DISTRIBUTION|PROJECTING GLARING LIGHT|OBSTRUCTED WINDSHIELD|GLASS|REMOVABLE WINDSHIELD PLACARD|WHEELS')) ->equipment_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'LIGHTS|EQUIP|REQUIRED|RED COLOR LIGHT ON REAR LAMPS|MUFFLER|LAMP|TINT|REDUCE LIGHT DISTRIBUTION|PROJECTING GLARING LIGHT|OBSTRUCTED WINDSHIELD|GLASS|REMOVABLE WINDSHIELD PLACARD|WHEELS'))) ->remainder_set
+#separate out seatbelt related violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'SEATBELT|SEAT BELT|CHILD SAFETY SEAT')) ->seatbelt_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'SEATBELT|SEAT BELT|CHILD SAFETY SEAT'))) ->remainder_set
+#separate out following closely related violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'FOLLOWING VEHICLE CLOSER')) ->follow_close_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'FOLLOWING VEHICLE CLOSER'))) ->remainder_set
+#separate out lane change violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'LANE|PASSING')) ->lane_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'LANE|PASSING'))) ->remainder_set
+#separate out light/sign related violations
+remainder_set %>% 
+  filter(str_detect(coll(remainder_set[,5]),'TRAFFIC CONTROL DEVICE')) ->traffic_c_device_set
+remainder_set %>% 
+  filter(!(str_detect(coll(remainder_set[,5]),'TRAFFIC CONTROL DEVICE'))) ->remainder_set
+lane_set[,5]
+remainder_set[,5]
+follow_close_set[,5]
+pedestrian_set[,5]
+```
+
+
+
+```{r insurance,fig.showtext = TRUE,eval=FALSE,fig.width=13,echo=FALSE}
+violations<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/Traffic_Violations.csv')
+violation_date<-violations[1]
+splitter<-function(x){substr(x,4,5)}
+violation_date_day<-as.numeric(sapply(violation_date,splitter))
+hist(violation_date_day)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r ddd,fig.showtext = TRUE,eval=FALSE,fig.width=13,echo=FALSE}
+ddd_prices<-read.csv("C:/Users/dawig/Desktop/Data698/DDD.csv")
+ddd_prices
+ddd_series<-ts(ddd_prices$Open)
+ddd_series
+ddd_series_2month<-window(ddd_series, start=12, end=54)
+before<-window(ddd_series_2month, end=33)
+after<-window(ddd_series_2month, start=33)
+ddd_series_2month
+plota<-autoplot(ddd_series_2month)+scale_x_discrete(limits=c(12,19,26,33,40,47,54), labels=c("10/02/2017","10/11/2017","10/20/2017","10/31/2017","11/09/2017","11/20/2017","11/30/2017")) +
+  autolayer(before, series="Before Announcement") +
+  autolayer(after, series="After Announcement")+ theme(axis.text.x = element_text(angle = 30, hjust = .9),text = element_text(family = "breeserif",color='#249382',size=30),legend.position = c(0.7, 0.7),legend.background=element_blank(),legend.title = element_text(color='#f2f7f2'),panel.background = element_rect(fill = '#f2f7f2'))+labs(y='3D Systems',x='Q3 2017')
+
+
+ddd_prices2<-read.csv("C:/Users/dawig/Desktop/Data698/DDD2.csv")
+ddd_series2<-ts(ddd_prices2$Open)
+before<-window(ddd_series2, end=19)
+after<-window(ddd_series2, start=19)
+
+plotb<-autoplot(ddd_series2)+scale_x_discrete(limits=c(1,8,15,22,29,36), labels=c("2/14/2018","2/26/2018","3/7/2018","3/16/2018","3/27/2018","4/6/2018")) +
+  autolayer(before, series="Before Announcement") +
+  autolayer(after, series="After Announcement")+ theme(axis.text.x = element_text(angle = 30, hjust = .9),text = element_text(family = "breeserif",color='#249382',size=30),legend.position = c(0.7, 0.3),legend.background=element_blank(),legend.title = element_text(color='#f2f7f2'),panel.background = element_rect(fill = '#f2f7f2'))+labs(y='',x='Q4 2017')
+
+
+ddd_prices3<-read.csv("C:/Users/dawig/Desktop/Data698/DDD3.csv")
+ddd_series3<-ts(ddd_prices3$Open)
+before<-window(ddd_series3, end=24)
+after<-window(ddd_series3, start=24)
+plotc<-autoplot(ddd_series3)+scale_x_discrete(limits=c(1,8,15,22,29,36,43), labels=c("4/2/2018","4/11/2018","4/20/2018","5/1/2018","5/10/2018","5/21/2018","5/31/2018")) +
+  autolayer(before, series="Before Announcement") +
+  autolayer(after, series="After Announcement")+ theme(axis.text.x = element_text(angle = 30, hjust = .9),text = element_text(family = "breeserif",color='#249382',size=30),legend.position = c(0.8, 0.3),legend.background=element_blank(),legend.title = element_text(color='#f2f7f2'),panel.background = element_rect(fill = '#f2f7f2'))+labs(y='',x='Q1 2018')
+grid.arrange(plota,plotb,plotc,nrow = 1)
+```

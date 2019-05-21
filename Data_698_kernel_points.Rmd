@@ -1,0 +1,152 @@
+---
+title: "Data_698_kernel_points"
+author: "Dan Wigodsky"
+date: "March 14, 2019"
+output: html_document
+---
+
+```{r load-packages}
+suppressWarnings(suppressMessages(library(fpp2)))
+suppressWarnings(suppressMessages(library(showtext)))
+suppressWarnings(suppressMessages(library(ggplot2)))
+suppressWarnings(suppressMessages(library(kableExtra)))
+suppressWarnings(suppressMessages(library(expsmooth)))
+suppressWarnings(suppressMessages(library(seasonal)))
+suppressWarnings(suppressMessages(library(gridExtra)))
+suppressWarnings(suppressMessages(library(stringr)))
+suppressWarnings(suppressMessages(library(dplyr)))
+suppressWarnings(suppressMessages(library(ggforce)))
+font_add_google(name = "Corben", family = "corben", regular.wt = 400, bold.wt = 700)
+  font_add_google(name = "Bree Serif", family = "breeserif", regular.wt = 400, bold.wt = 700)
+showtext_auto()
+``` 
+
+```{r test-section, eval=FALSE}
+edges=read.csv('C:/Users/dawig/Desktop/Data698/Maryland/Traffic_Violations.csv',header=FALSE)
+str(edges)
+
+```
+  
+```{r test-section2, eval=FALSE}
+head(edges$V5)
+col_viol<-sapply(edges$V5,as.character)
+length(col_viol)
+col_viol %>% unique(col_viol)->col_viol_unique
+length(col_viol_unique)
+```
+```{r test-section3, eval=FALSE}
+col_viol_unique %>% n_distinct(col_viol_unique)
+col_viol_unique[30:50]
+```
+
+```{r datavistemp,fig.showtext = TRUE,echo=FALSE,fig.height=10,fig.width=10,warning=FALSE,eval=TRUE}
+edges=read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/county_edges_first_last_match.csv',header=FALSE)
+colnames(edges)<-c('bool','latitude','longitude')
+#edges are in order with opposite points next to ech other.  We need to unzip them so they're in order
+seq(1,length(edges[,1]),2)
+edges_top<-edges[seq(1,length(edges[,1]),2),]
+edges_top<-edges_top[which(edges_top$latitude>39.1),]
+edges_bottom<-edges[seq(2,length(edges[,1]),2),]
+edges_bottom<-edges_bottom[which(edges_bottom$latitude<39.2),]
+edges<-rbind(edges_top,edges_bottom)
+edges_graph_path<-rbind(edges,edges[1,])
+ggplot(data=edges_graph_path) +geom_path(aes(x=-longitude,y=latitude,color=bool))+
+  theme(text = element_text(family="corben",color='#249382',size=22))+ geom_circle(aes(x0=-77.21, y0=39.15, r=.32))+ geom_point(aes(x=-77.21, y=39.15),color='blue')
+```  
+  
+```{r datavistemp2,fig.showtext = TRUE,echo=FALSE,fig.height=11,fig.width=11,warning=FALSE,eval=TRUE}
+edges=read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/county_edges_first_last_match.csv',header=FALSE)  
+colnames(edges)<-c('bool','latitude','longitude')
+edges[1,2]
+edges[1,3]
+kernel_line<-rep(0,10)
+kernel_line<-cbind(kernel_line,kernel_line)
+kernel_line_added<-c(0,0)
+for (j in 1:144){
+y_diff_kernel_line=(edges[j,2]-39.15)/10
+x_diff_kernel_line=(-(edges[j,3]-77.21))/10
+for(i in 1:10){
+kernel_line[i,1]<-39.15 + y_diff_kernel_line*(10*i)^.5
+kernel_line[i,2]<-(-77.21) + x_diff_kernel_line*(10*i)^.5
+}
+colnames(kernel_line)<-c('yvals','xvals')
+kernel_line<-as.data.frame(kernel_line)
+kernel_line_added<-rbind(kernel_line_added,kernel_line)
+}
+kernel_line_added<-kernel_line_added[-1,]
+
+a_circle<-function(num,radius){
+lat_set<-vector()
+long_set<-vector()
+gap<-360/num  #how close to make points in circle
+for (i in 1:num){
+   long_set[i] <--77.21+radius*(cos(gap*i*pi/180))
+   lat_set[i] <-39.15+radius*(sin(gap*i*pi/180))  
+   }
+circle_set<-as.data.frame(cbind(lat_set,long_set))
+colnames(circle_set)<-c('latitude','longitude')
+return (circle_set)
+}
+#make a set of equidistant rings
+#.997^(1.96i-241.96) moves the power from 2 to 1.5
+transfer_set_long<-vector()
+transfer_set_lat<-vector()
+for (i in 1:82){
+  if (i<27){transfer<-a_circle(round((i+2.45)^(.998^(1.87*i-276.96))-3),(.0032+.000019*i)*i)}
+  else if (i<45){transfer<-a_circle(round((i+2.4)^(1.59-.001*i)-3),(.00362+.000003*i)*i)}
+  else if (i<60){transfer<-a_circle(round((i+2.4)^(1.59-.0007*i)-3),(.00362+.000003*i)*i)}
+  else if (i<70){transfer<-a_circle(round((i+2.4)^(1.59-.00062*i)-3),(.00362+.000003*i)*i)}
+  else {transfer<-a_circle(round((i+2.4)^(1.59-.00052*i)-3),(.00362+.000003*i)*i)}
+transfer_set_long<-rbind(transfer_set_long,transfer['longitude'])
+transfer_set_lat<-rbind(transfer_set_lat,transfer['latitude'])
+}
+#if (i<70){transfer<-a_circle(round((i+2.5)^(.996^(2.05*i-206.96))-3),(.0051+.00007*i)*i)}
+transfer_set_long<-as.matrix(transfer_set_long)
+transfer_set_lat<-as.matrix(transfer_set_lat)
+transfer_sector<-rep(0,32947)
+transfer_set<-as.data.frame(cbind(transfer_set_lat,transfer_set_long,transfer_sector))
+str(transfer_set)
+circle_circle<-a_circle(6,.006)
+str(circle_circle)
+#
+ggplot(data=edges_graph_path) +geom_path(aes(x=-longitude,y=latitude,color=bool))+
+  theme(text = element_text(family="corben",color='#249382',size=22))+ geom_circle(aes(x0=-77.21, y0=39.15, r=.32))+ geom_point(aes(x=-77.21, y=39.15),color='#464cc4',size=.95,alpha=.3)+geom_point(data=transfer_set,aes(x=transfer_set_long,y=transfer_set_lat),color='#464cc4',alpha=.4,size=.95)
+#+geom_point(data=second_circle,aes(x=longitude,y=latitude))
+#+geom_point(data=kernel_line_added,aes(x=xvals,y=yvals))+ geom_circle(aes(x0=-77.21, y0=39.15, r=.11))
+
+length(transfer_set$longitude)
+length(transfer_set$latitude)
+
+edges_graph_path_sectors<-edges_graph_path[seq(1,142,by=7),]
+ggplot(data=edges_graph_path_sectors) +geom_point(aes(x=-longitude,y=latitude))+
+  theme(text = element_text(family="corben",color='#249382',size=22))+ geom_circle(aes(x0=-77.21, y0=39.15, r=.32))+ geom_point(aes(x=-77.21, y=39.15),color='#464cc4',size=.95,alpha=.3)+geom_point(data=transfer_set,aes(x=longitude,y=latitude),color='#464cc4',alpha=.4,size=.95)
+
+head(edges_graph_path)
+head(transfer_set)
+```  
+
+```{r sector selection,fig.showtext = TRUE,echo=FALSE,fig.height=11,fig.width=11,warning=FALSE,eval=TRUE}
+close_finder<-function(an_entry){
+  n<-0
+  val<-3
+  for (i in 1:21){
+    if(((edges_graph_path_sectors[i,2] - an_entry[1])^2+(-edges_graph_path_sectors[i,3] - an_entry[2])^2)<val){
+      val<-((edges_graph_path_sectors[i,2] - an_entry[1])^2+(-edges_graph_path_sectors[i,3] - an_entry[2])^2)
+      n<-i
+    }
+  }
+  return (n)
+}
+
+edges_graph_path_sectors
+for(i in 1:32947){
+transfer_set[i,3]<-close_finder(transfer_set[i,])
+}
+head(transfer_set)
+ggplot(data=edges_graph_path) +geom_path(aes(x=-longitude,y=latitude,color=bool))+
+  theme(text = element_text(family="corben",color='#249382',size=22))+ geom_circle(aes(x0=-77.21, y0=39.15, r=.32))+ geom_point(aes(x=-77.21, y=39.15),color='#464cc4',size=.95,alpha=.3)+geom_point(data=transfer_set,aes(x=transfer_set_long,y=transfer_set_lat,color=transfer_sector),alpha=.4,size=.95)
+
+#write.csv(transfer_set,'C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/transfer_set.csv',row.names=FALSE)
+#write.csv(edges_graph_path,'C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/edges_graph_path.csv',row.names=FALSE)
+#write.csv(edges_graph_path_sectors,'C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/edges_graph_path_sectors.csv',row.names=FALSE)
+```

@@ -1,0 +1,36 @@
+---
+title: "Data698_pare_driver_accident_set_to_unique_accidents"
+author: "Dan Wigodsky"
+date: "April 17, 2019"
+output: html_document
+---
+
+```{r load-packages}
+suppressWarnings(suppressMessages(library(fpp2)))
+suppressWarnings(suppressMessages(library(showtext)))
+suppressWarnings(suppressMessages(library(ggplot2)))
+suppressWarnings(suppressMessages(library(kableExtra)))
+suppressWarnings(suppressMessages(library(expsmooth)))
+suppressWarnings(suppressMessages(library(seasonal)))
+suppressWarnings(suppressMessages(library(gridExtra)))
+suppressWarnings(suppressMessages(library(stringr)))
+suppressWarnings(suppressMessages(library(dplyr)))
+suppressWarnings(suppressMessages(library(ggforce)))
+font_add_google(name = "Corben", family = "corben", regular.wt = 400, bold.wt = 700)
+  font_add_google(name = "Bree Serif", family = "breeserif", regular.wt = 400, bold.wt = 700)
+showtext_auto()
+``` 
+
+```{r accident-pare,fig.showtext = TRUE,echo=FALSE,fig.height=8,fig.width=8,warning=FALSE,eval=TRUE}
+options(width = 100)
+crashes<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/Crash_Reporting_-_Drivers_Data.csv',stringsAsFactors = FALSE)
+
+dim(crashes)
+crashes %>% 
+  select(Report.Number,Local.Case.Number,Crash.Date.Time,Longitude,Latitude) %>% 
+  arrange(Report.Number) %>% 
+  distinct()->new_crashes
+
+write.csv(new_crashes,'C:/Users/dawig/Desktop/Data698/Maryland/accidents_unique.csv',row.names = FALSE)
+  
+```

@@ -1,0 +1,145 @@
+---
+title: "Data_698_kernel_points_b"
+author: "Dan Wigodsky"
+date: "April 4, 2019"
+output: html_document
+---
+
+```{r load-packages}
+suppressWarnings(suppressMessages(library(fpp2)))
+suppressWarnings(suppressMessages(library(showtext)))
+suppressWarnings(suppressMessages(library(ggplot2)))
+suppressWarnings(suppressMessages(library(kableExtra)))
+suppressWarnings(suppressMessages(library(expsmooth)))
+suppressWarnings(suppressMessages(library(seasonal)))
+suppressWarnings(suppressMessages(library(gridExtra)))
+suppressWarnings(suppressMessages(library(stringr)))
+suppressWarnings(suppressMessages(library(dplyr)))
+suppressWarnings(suppressMessages(library(ggforce)))
+font_add_google(name = "Corben", family = "corben", regular.wt = 400, bold.wt = 700)
+  font_add_google(name = "Bree Serif", family = "breeserif", regular.wt = 400, bold.wt = 700)
+showtext_auto()
+``` 
+
+```{r points_vis,fig.showtext = TRUE,echo=FALSE,fig.height=11,fig.width=11,warning=FALSE,eval=TRUE}
+
+transfer_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/transfer_set.csv')
+#when loading,drop 1, as first is same as last
+edges_graph_path<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/edges_graph_path.csv')[1:141,]
+edges_graph_path_sectors<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/edges_graph_path_sectors.csv')
+length(edges_graph_path[,1])
+#edges_graph_path<-edges_graph_path[c(58:69),]
+#transfer_set<-transfer_set[which(transfer_set$transfer_sector==10 ),]
+
+ggplot(data=edges_graph_path) +geom_point(aes(x=-longitude,y=latitude))+
+  theme(text = element_text(family="corben",color='#249382',size=22))+ geom_circle(aes(x0=-77.21, y0=39.15, r=.32))+ geom_point(aes(x=-77.21, y=39.15),color='#464cc4',size=.95,alpha=.3)+geom_point(data=transfer_set,aes(x=longitude,y=latitude,color=transfer_sector),alpha=.4,size=.95)
+
+```
+
+```{r points_choice,fig.showtext = TRUE,echo=FALSE,fig.height=11,fig.width=11,warning=FALSE,eval=TRUE}
+ 
+point_dropper<-function(sector_num,transfer_set){
+  #choose comparison points and build set
+  if (sector_num==1){sector_index_set<-c(130:141,2:8)}
+  else if(sector_num==2){sector_index_set<-c(136:141,2:20)}
+  else if(sector_num==21){sector_index_set<-c(135:141,1:5)}
+  else{sector_index_set<-seq((sector_num*7-12),(sector_num*7-1),by=1)}
+  sector_test_set<-edges_graph_path[sector_index_set,]
+  transfer_set<-transfer_set[which(transfer_set$transfer_sector==sector_num ),]
+  
+  
+  #find nearest 2 sector test set points
+  print('ts')
+  print(length(transfer_set[,1]))
+  
+  for(i in 1:length(transfer_set[,1])){
+   shortest_dist<-c(5,5)
+   closest_point<-142
+   second_closest_point<-142
+    for(m in 1:length(sector_test_set[,1])){
+      point_squared_dist<-((transfer_set[i,1]-sector_test_set[m,2])^2+(-transfer_set[i,2]-sector_test_set[m,3])^2)
+     
+      if(point_squared_dist<shortest_dist[1]){
+         shortest_dist[2]<-shortest_dist[1]
+         second_closest_point<-closest_point
+         shortest_dist[1]<-point_squared_dist
+         closest_point<-m
+         }
+      else if(point_squared_dist<shortest_dist[2]){
+         shortest_dist[2]<-point_squared_dist
+         second_closest_point<-m
+          }
+        }
+  closest_point<-sector_index_set[closest_point]
+  second_closest_point<-sector_index_set[second_closest_point]
+  #print(shortest_dist)
+  #print(closest_point)
+  #print(second_closest_point) 
+  
+#zero out points further from center than mean of 2 closest
+  avg_long<-(edges_graph_path[closest_point,2]+edges_graph_path[closest_point,2])/2
+  avg_lat<- -(edges_graph_path[closest_point,3]+edges_graph_path[closest_point,3])/2
+  limit_sq_dist<-((avg_long-39.1)^2+(avg_lat+77.04)^2)
+ 
+  if (((transfer_set[i,1]-39.1)^2+(transfer_set[i,2]+77.04)^2)-limit_sq_dist>0){transfer_set[i,3]<-0}
+  
+  
+  }
+transfer_set<-transfer_set[which(transfer_set[,3]>0),]
+#write_file<-paste0('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/points_attempt_b',sector_num,'.csv')
+#files already written
+#write.csv(transfer_set,write_file)
+}
+#(x=-77.21, y=39.15)
+
+
+point_dropper(1,transfer_set)
+
+
+```
+
+```{r kernel_points,fig.showtext = TRUE,echo=FALSE,fig.height=11,fig.width=11,warning=FALSE,eval=TRUE}
+
+#transfer_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/kernel_points_first_attempt.csv')
+
+
+#ggplot(data=edges_graph_path) +geom_point(aes(x=-longitude,y=latitude))+
+#  theme(text = element_text(family="corben",color='#249382',size=22))+ geom_circle(aes(x0=-77.21, y0=39.15, r=.32))+ geom_point(aes(x=-77.21, y=39.15),color='#464cc4',size=.95,alpha=.3)+geom_point(data=transfer_set,aes(x=longitude,y=latitude,color=transfer_sector),alpha=.4,size=.95)+ geom_point(aes(x=-77.11, y=39.05),color='red',size=.95,alpha=.3)
+
+transfer_set<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/points_attempt_b1.csv')
+
+ggplot(data=edges_graph_path) +geom_path(aes(x=-longitude,y=latitude))+
+  theme(text = element_text(family="corben",color='#249382',size=22))+ geom_circle(aes(x0=-77.21, y0=39.15, r=.32))+ geom_point(aes(x=-77.21, y=39.15),color='#464cc4',size=.95,alpha=.3)+geom_point(data=transfer_set,aes(x=longitude,y=latitude,color=transfer_sector),alpha=.4,size=.95)+ geom_point(aes(x=-77.11, y=39.05),color='red',size=.95,alpha=.3)
+
+```
+
+```{r kernel_points-finished,fig.showtext = TRUE,echo=FALSE,fig.height=11,fig.width=11,warning=FALSE,eval=FALSE}
+transfer_set_1<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points1.csv')
+transfer_set_2<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points2.csv')
+transfer_set_3<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points3.csv')
+transfer_set_4<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points4.csv')
+transfer_set_5<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points5.csv')
+transfer_set_6<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points6.csv')
+transfer_set_7<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points7.csv')
+transfer_set_8<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points8.csv')
+transfer_set_9<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points9.csv')
+transfer_set_10<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points10.csv')
+transfer_set_11<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points11.csv')
+transfer_set_12<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points12.csv')
+transfer_set_13<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points13.csv')
+transfer_set_14<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points14.csv')
+transfer_set_15<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points15.csv')
+transfer_set_16<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points16.csv')
+transfer_set_17<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points17.csv')
+transfer_set_18<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points18.csv')
+transfer_set_19<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points19.csv')
+transfer_set_20<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points20.csv')
+transfer_set_21<-read.csv('C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/inside_points21.csv')
+transfer_set<-rbind(transfer_set_1,transfer_set_2,transfer_set_3,transfer_set_4,transfer_set_5,transfer_set_6,transfer_set_7,transfer_set_8,transfer_set_9,transfer_set_10,transfer_set_11,transfer_set_12,transfer_set_13,transfer_set_14,transfer_set_15,transfer_set_16,transfer_set_17,transfer_set_18,transfer_set_19,transfer_set_20,transfer_set_21)
+
+ggplot(data=edges_graph_path) +geom_point(aes(x=-longitude,y=latitude))+
+  theme(text = element_text(family="corben",color='#249382',size=22))+ geom_circle(aes(x0=-77.21, y0=39.15, r=.32))+ geom_point(aes(x=-77.21, y=39.15),color='#464cc4',size=.95,alpha=.3)+geom_point(data=transfer_set,aes(x=longitude,y=latitude,color=transfer_sector),alpha=.4,size=.95)
+
+#write.csv(transfer_set,'C:/Users/dawig/Desktop/Data698/Maryland/python_files/r_files/kernel_points_first_attempt.csv')
+
+```
